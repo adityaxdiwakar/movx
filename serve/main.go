@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"net/http"
@@ -22,16 +21,19 @@ type DirectoryResp struct {
 	Files   []string `json:"files"`
 }
 
+/* DirectoryReq is the expected request format for `/directories` endpoint */
 type DirectoryReq struct {
 	Directory string `json:"directory"`
 }
 
 var err error
 
+/* Payloads is generic type for what can be returned as payload */
 type Payloads interface {
 	string | DirectoryResp
 }
 
+/* writeHeaderAndBody helper type */
 func writeHeaderAndBody[T Payloads](w http.ResponseWriter, body T, status int) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(Response[T]{
@@ -42,6 +44,7 @@ func writeHeaderAndBody[T Payloads](w http.ResponseWriter, body T, status int) {
 
 func main() {
 	r := chi.NewRouter()
+	defer http.ListenAndServe(":3137", r)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		writeHeaderAndBody(w, "Welcome!", http.StatusOK)
@@ -67,10 +70,10 @@ func main() {
 			return
 		}
 
+		/* split files and directories */
 		var directoriesFound []string
 		var filesFound []string
 		for _, file := range files {
-			fmt.Println(file.Name())
 			if file.IsDir() {
 				directoriesFound = append(directoriesFound, file.Name())
 			} else {
@@ -78,11 +81,11 @@ func main() {
 			}
 		}
 
+		/* return */
 		writeHeaderAndBody(w, DirectoryResp{
 			Folders: directoriesFound,
 			Files:   filesFound,
 		}, http.StatusOK)
 	})
 
-	http.ListenAndServe(":3137", r)
 }
